@@ -71,7 +71,12 @@ def tokenize_prompt_and_output(
     
     input_ids = torch.ones(len(combined_ids), max_len, dtype=torch.long) 
     # breakpoint()
-    input_ids *=  tokenizer.pad_token_id
+    
+    if tokenizer.pad_token_id is not None:
+        input_ids *=  tokenizer.pad_token_id
+    # else:
+        # input_ids *=  tokenizer.eos_token
+    
     
     # labels = torch.ones(len(combined_ids), max_len, dtype=torch.long) * tokenizer.pad_token_id
     # response_mask[rows][:torch.tensor(prompt_lens)] = True
