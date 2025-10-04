@@ -1,5 +1,17 @@
 {
     "github.copilot.enable": {
         "python": false
-    }
+    },
+
+  "python.defaultInterpreterPath": ".venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+
+
+  "python.languageServer": "Pylance",
+
+
+  "python.analysis.extraPaths": ["."],
+
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.indexing": true
 }

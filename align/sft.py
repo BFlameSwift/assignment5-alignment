@@ -98,3 +98,22 @@ def tokenize_prompt_and_output(
         "response_mask" : response_mask
     }
     
+    
+def compute_entropy(logits: torch.Tensor) -> torch.Tensor:
+    """Get the entropy of the logits (i.e., entropy of the final dimension)."""
+    # raise NotImplementedError
+    # torch.logsumexp()
+    import torch.nn.functional as F
+
+    # return -torch.logsumexp(logits ,dim=-1)
+    # breakpoint()
+    # return -torch.logsumexp(probs  * torch.log(probs) ,dim=-1)
+
+    # Methods 1
+    probs = F.softmax(logits, dim=-1)  
+    # return -torch.sum(probs  * torch.log(probs) ,dim=-1)
+    
+    # Methods2
+    logprob = logits - torch.logsumexp( logits,dim=-1,keepdim=True)
+    # breakpoint()
+    return -torch.sum(logprob * torch.exp(logprob),dim=-1)
