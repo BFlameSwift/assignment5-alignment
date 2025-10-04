@@ -177,9 +177,61 @@ def compute_grpo_clip_loss(
         "lower_cliped_ratio_rate": below_clip.float().mean(),
         "min_ratio": probs_ratio.min(),
         "mean_advantage": advantages.mean(),
-        "std_advantage": advantages.std()
+        "std_advantage": advantages.std(),
+        "loss_type":"grpo_clip"
+        
     }
     # if cliprange < 0.5:
     #     breakpoint()
     
     return - torch.min(clip_ratio* advantages,probs_ratio*advantages) , metadata
+
+
+def compute_policy_gradient_loss(
+    policy_log_probs: torch.Tensor,
+    loss_type: str,
+    raw_rewards: torch.Tensor,
+    advantages: torch.Tensor,
+    old_log_probs: torch.Tensor,
+    cliprange: float,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """
+    Wrapper that delegates to the appropriate policy gradient loss function above.
+    """
+    # raise NotImplementedError
+    
+    if loss_type == "grpo_clip":
+        return compute_grpo_clip_loss(advantages,policy_log_probs,old_log_probs,cliprange)
+    elif loss_type == "reinforce_with_baseline":
+        loss = compute_naive_policy_gradient_loss(advantages, policy_log_probs)
+        # breakpoint()
+        # loss = loss.mean()
+        return loss,{"loss_type": "reinforce_with_baseline",'loss':loss.mean()}
+    elif loss_type == "no_baseline":
+        
+        loss =  compute_naive_policy_gradient_loss(raw_rewards,policy_log_probs)
+        return  loss, {"loss_type": "no_baseline",'loss':loss.mean()}
+    else:
+        raise Exception("not a type")
+    
+def masked_mean(tensor: torch.Tensor, mask: torch.Tensor, dim: int | None = None) -> torch.Tensor:
+    """Compute the mean of the tensor along a dimension,
+    considering only the elements with mask value 1.
+
+    Args:
+        tensor: torch.Tensor, the tensor to compute the mean of.
+        mask: torch.Tensor, the mask. We only take the mean over
+            the elements with mask value 1.
+        dim: int | None, the dimension to compute the mean along.
+            If None, sum over all non-masked elements and average
+            by their total count.
+
+    Returns:
+        torch.Tensor, the mean of the tensor along the specified
+            dimension, considering only the elements with mask value 1.
+    """
+    # breakpoint()
+    # return (tensor * mask).mean(dim=dim)
+    mat = tensor * mask
+    
+    return mat.sum(dim=dim) / mask.sum(dim=dim)
