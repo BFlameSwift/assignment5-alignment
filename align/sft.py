@@ -158,6 +158,7 @@ def get_response_log_probs(
     
     # Get log probabilities for the actual labels
     log_probs = torch.nn.functional.log_softmax(outputs.logits, dim=-1)
+    # # 需要学习的操作
     selected_log_probs = log_probs[rows, cols, labels]  # Shape: (batch_size, sequence_length)
 
     
@@ -172,5 +173,32 @@ def get_response_log_probs(
     return ret
     
     
+def masked_normalize(
+    tensor: torch.Tensor,
+    mask: torch.Tensor,
+    dim: int | None = None,
+    normalize_constant: float = 1.0,
+) -> torch.Tensor:
+    """Sum over a dimension and normalize by a constant,
+    considering only the elements with mask value 1.
+
+    Args:
+        tensor: torch.Tensor, the tensor to sum and normalize.
+        mask: torch.Tensor, the mask. We only consider elements
+            with mask value 1.
+        dim: int | None, the dimension to sum along before
+            normalization. If None, sum over all dimensions.
+        normalize_constant: float, the constant to divide by
+            for normalization.
+
+    Returns:
+        torch.Tensor, the normalized sum, where masked elements
+            (mask=0) don't contribute to the sum.
+    """
     
     
+    masked_tensor = tensor * mask
+    
+    sum_num = torch.sum(masked_tensor,dim=dim)
+    
+    return sum_num / normalize_constant
