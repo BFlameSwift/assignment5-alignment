@@ -118,6 +118,7 @@ def compute_entropy(logits: torch.Tensor) -> torch.Tensor:
     log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
     # breakpoint()
     # breakpoint()
+    
     return -torch.sum(logprob * torch.exp(logprob),dim=-1)
 
 def get_response_log_probs(
@@ -202,3 +203,62 @@ def masked_normalize(
     sum_num = torch.sum(masked_tensor,dim=dim)
     
     return sum_num / normalize_constant
+
+# TODO
+# def log_generations()
+
+def sft_microbatch_train_step(
+    policy_log_probs: torch.Tensor,
+    response_mask: torch.Tensor,
+    gradient_accumulation_steps: int,
+    normalize_constant: int | None = 1.0,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """
+    Compute the policy gradient loss and backprop its gradients for a microbatch.
+    """
+    
+    loss = masked_normalize(policy_log_probs,response_mask,dim=-1,normalize_constant=normalize_constant)
+    
+    loss = - loss.mean() / gradient_accumulation_steps
+    
+    loss.backward()
+    
+    
+    metadata = {
+        "loss" : loss.detach(),
+        "log_probs" : policy_log_probs.detach(),
+        "response_mask":response_mask.detach(),
+    }
+    return loss,metadata
+    # loss = torch.zeros(policy_log_probs.size()[:-1],device=policy_log_probs.device,dtype=torch.float32)
+    # # ,requires_grad=True)
+    # all_loss = torch.zeros_like(loss)
+    # for i in range(gradient_accumulation_steps):
+    #     # entropy = compute_entropy(policy_log_probs * response_mask)
+    #     logprob =  policy_log_probs * response_mask
+    #     entropy = -torch.sum(logprob * torch.exp(logprob),dim=-1)
+    #     # breakpoint()
+    #     # loss += entropy 
+    #     loss = entropy  / normalize_constant / gradient_accumulation_steps
+    #     loss_sum = loss.sum()
+    #     all_loss[i] = loss.sum().detach()
+    #     loss_sum.backward()
+        
+    #     # breakpoint()
+
+    
+   
+
+    # metadata = {}
+    # # breakpoint()
+    
+    # # loss_num = torch.sum(loss) / normalize_constant
+    # return all_loss.sum(),metadata
+    # return {
+    #     "loss" : loss.detach(),
+    #     "metadata":metadata
+    # }
+
+    # breakpoint()    # breakpoint()
+    
+    

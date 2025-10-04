@@ -4,7 +4,7 @@ import os
 from typing import Any, Callable, Literal
 
 import torch
-from torch import Tensor
+from torch import Tensor, repeat_interleave
 from torch.utils.data import Dataset
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
@@ -87,7 +87,9 @@ def run_compute_group_normalized_rewards(
                 You may choose what you wish to log here
                 (some statistics of the rewards, etc.).
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from align.policy_gradient import compute_group_normalized_rewards
+    return compute_group_normalized_rewards(reward_fn,rollout_responses,repeated_ground_truths,group_size,advantage_eps,normalize_by_std)
     
 
 
@@ -214,9 +216,13 @@ def run_sft_microbatch_train_step(
     gradient_accumulation_steps: int,
     normalize_constant: int | None = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-    """Compute the policy gradient loss and backprop its gradients for a microbatch.
     """
-    raise NotImplementedError
+    Compute the policy gradient loss and backprop its gradients for a microbatch.
+    """
+    from align.sft import sft_microbatch_train_step
+
+    # raise NotImplementedError
+    return sft_microbatch_train_step(policy_log_probs,response_mask,gradient_accumulation_steps,normalize_constant)
 
     
 def run_grpo_microbatch_train_step(
