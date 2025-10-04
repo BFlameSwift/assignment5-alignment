@@ -99,3 +99,87 @@ def compute_group_normalized_rewards(
     advs1d = rearrange(advs, "n g -> (n g)",n=n_prompts_per_rollout_batch,g=group_size)
     # breakpoint()
     return advs1d, rewards1d,  metadata
+
+
+def compute_naive_policy_gradient_loss(
+    raw_rewards_or_advantages: torch.Tensor,
+    policy_log_probs: torch.Tensor,
+) -> torch.Tensor:
+    """Compute policy gradient loss using either raw rewards or advantages.
+
+    Args:
+        raw_rewards_or_advantages: torch.Tensor of shape (batch_size, 1): 
+            the raw rewards or advantages for each rollout response.
+        policy_log_probs: torch.Tensor of shape (batch_size, sequence_length): 
+            the log-probs of the policy.
+
+    Returns:
+        torch.Tensor of shape (batch_size, sequence_length): 
+            the policy gradient per-token loss.
+    """
+    
+    return - raw_rewards_or_advantages * policy_log_probs
+
+def compute_grpo_clip_loss(
+    advantages: torch.Tensor,
+    policy_log_probs: torch.Tensor,
+    old_log_probs: torch.Tensor,
+    cliprange: float,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """Compute the GRPO-Clip loss.
+
+    Args:
+        advantages: torch.Tensor of shape (batch_size, 1): 
+            the advantages for each rollout response.
+        policy_log_probs: torch.Tensor of shape (batch_size, sequence_length): 
+            the log-probs of the policy.
+        old_log_probs: torch.Tensor of shape (batch_size, sequence_length): 
+            the log-probs of the old policy.
+        cliprange: float, the clip range for the ratio.
+
+    Returns:
+        tuple[torch.Tensor, dict[str, torch.Tensor]]:
+            torch.Tensor of shape (batch_size, sequence_length): 
+                the GRPO-Clip per-token loss.
+            dict[str, torch.Tensor]: metadata for the GRPO-Clip loss 
+                (used to compute clip fraction).
+    """
+    # raise NotImplementedError
+    
+    native_pg_loss = compute_naive_policy_gradient_loss(advantages,policy_log_probs)
+    
+    
+    log_probs_ratio = policy_log_probs - old_log_probs
+    probs_ratio = torch.exp(log_probs_ratio)
+    # breakpoint()
+    # clip_ratio = min(probs_ratio, 1+cliprange) if probs_ratio.item() > 0 else max(probs_ratio, 1- cliprange)
+    
+    below_clip = probs_ratio <=  (1- cliprange)
+    up_clip =  probs_ratio >=  (1 + cliprange)
+    
+    one = torch.ones_like(below_clip,dtype=torch.long)
+    
+    clip_ratio = one * (1- cliprange) * below_clip + one * (1+ cliprange) * up_clip + ~(below_clip+up_clip) * probs_ratio
+    # clip_ratio = torch.clamp(probs_ratio, 1 - cliprange, 1 + cliprange)
+    
+
+
+    # clip_ratio = torch.where(below_clip, 1 - cliprange,
+    #                 torch.where(up_clip, 1 + cliprange, probs_ratio))
+    # breakpoint()
+    
+    metadata = {
+        "clip_fraction": (torch.abs(probs_ratio - clip_ratio) > 0).float().mean(),
+        "mean_ratio": probs_ratio.mean(),
+        "std_ratio": probs_ratio.std(),
+        "max_ratio": probs_ratio.max(),
+        "upper_cliped_ratio_rate": up_clip.float().mean(),
+        "lower_cliped_ratio_rate": below_clip.float().mean(),
+        "min_ratio": probs_ratio.min(),
+        "mean_advantage": advantages.mean(),
+        "std_advantage": advantages.std()
+    }
+    # if cliprange < 0.5:
+    #     breakpoint()
+    
+    return - torch.min(clip_ratio* advantages,probs_ratio*advantages) , metadata

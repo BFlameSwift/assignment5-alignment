@@ -148,7 +148,9 @@ def run_compute_naive_policy_gradient_loss(
         torch.Tensor of shape (batch_size, sequence_length): 
             the policy gradient per-token loss.
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from align.policy_gradient import compute_naive_policy_gradient_loss
+    return compute_naive_policy_gradient_loss(raw_rewards_or_advantages,policy_log_probs)
 
 
 def run_compute_grpo_clip_loss(
@@ -175,7 +177,9 @@ def run_compute_grpo_clip_loss(
             dict[str, torch.Tensor]: metadata for the GRPO-Clip loss 
                 (used to compute clip fraction).
     """
-    raise NotImplementedError
+    # raise NotImplementedError
+    from align.policy_gradient import compute_grpo_clip_loss
+    return compute_grpo_clip_loss(advantages,policy_log_probs,old_log_probs,cliprange)
 
 
 def run_compute_policy_gradient_loss(
