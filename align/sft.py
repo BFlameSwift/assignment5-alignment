@@ -108,12 +108,69 @@ def compute_entropy(logits: torch.Tensor) -> torch.Tensor:
     # return -torch.logsumexp(logits ,dim=-1)
     # breakpoint()
     # return -torch.logsumexp(probs  * torch.log(probs) ,dim=-1)
-
     # Methods 1
     probs = F.softmax(logits, dim=-1)  
     # return -torch.sum(probs  * torch.log(probs) ,dim=-1)
     
     # Methods2
     logprob = logits - torch.logsumexp( logits,dim=-1,keepdim=True)
+    # 相同
+    log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+    # breakpoint()
     # breakpoint()
     return -torch.sum(logprob * torch.exp(logprob),dim=-1)
+
+def get_response_log_probs(
+    model: torch.nn.Module,
+    input_ids: torch.Tensor,
+    labels: torch.Tensor,
+    return_token_entropy: bool,
+) -> torch.Tensor:
+    """Get the conditional log-probs of the response given the prompt,
+        and optionally the entropy of the next token predictions.
+
+    Args:
+        model: PreTrainedModel, the model to score.
+        input_ids: torch.Tensor of shape (batch_size, sequence_length):
+            the tokenized prompt and output.
+        labels: torch.Tensor of shape (batch_size, sequence_length):
+            shifted input_ids.
+        return_token_entropy: bool, whether to return the entropy of the
+            next token predictions.
+
+    Returns:
+        dict[str, torch.Tensor]:
+            "log_probs": torch.Tensor of shape (batch_size, sequence_length):
+                the conditional log-probs of the response given the prompt.
+                Note that we have not masked out the token indices corresponding
+                to the prompt or padding; that is done in the train loop.
+            "token_entropy": Optional[torch.Tensor] of shape (batch_size, sequence_length):
+                the entropy of the next token predictions. As with the log-probs,
+                we have not masked out the token indices corresponding to the prompt
+                or padding; that is done in the train loop.
+    """
+    batch_size, sequence_length = input_ids.shape
+    
+    outputs = model(input_ids)
+    
+    rows = torch.arange(batch_size).unsqueeze(1)  # Shape: (batch_size, 1)
+    cols = torch.arange(sequence_length).unsqueeze(0)  # Shape: (1, sequence_length)
+    
+    # Get log probabilities for the actual labels
+    log_probs = torch.nn.functional.log_softmax(outputs.logits, dim=-1)
+    selected_log_probs = log_probs[rows, cols, labels]  # Shape: (batch_size, sequence_length)
+
+    
+    # breakpoint()
+    ret = {}
+    ret['log_probs'] = selected_log_probs
+    
+    if return_token_entropy:
+        ret['token_entropy'] = compute_entropy(outputs.logits )
+        # pass
+        # breakpoint()
+    return ret
+    
+    
+    
+    
